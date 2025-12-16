@@ -80,9 +80,16 @@ body{
     color:#22f7ff;
     text-shadow:0 0 35px rgba(34,247,255,.8);
     width:2.4em;
+    transition:color .5s,text-shadow .5s;
 }
 
-/* STABLE COLONS */
+/* ALERT TIME */
+.time.alert{
+    color:#ff4d4d;
+    text-shadow:0 0 30px rgba(255,77,77,.9);
+}
+
+/* COLONS (STABLE) */
 .colon{
     position:absolute;
     top:50%;
@@ -107,7 +114,10 @@ body{
     height:100%;
     width:0%;
     background:linear-gradient(90deg,#22d3ee,#38bdf8);
-    transition:width .5s linear;
+    transition:width .5s linear,background .5s;
+}
+.progress-bar.alert{
+    background:#ff4d4d;
 }
 
 /* START BUTTON */
@@ -115,20 +125,18 @@ body{
     margin-top:3vh;
 }
 .control-btn{
-    min-width:90px;
-    height:32px;
-    border-radius:16px;
+    min-width:180px;
+    height:52px;
+    border-radius:26px;
     border:none;
-    font-size:.9rem;
-    font-weight:600;
+    font-size:1.2rem;
+    font-weight:700;
     cursor:pointer;
     background:#e6fffa;
     color:#020617;
+    transition:transform .2s;
 }
-.control-btn:disabled{
-    opacity:.4;
-    cursor:not-allowed;
-}
+.control-btn:hover{transform:scale(1.05)}
 
 /* STATUS */
 .status{
@@ -137,12 +145,11 @@ body{
     font-weight:700;
     color:#38bdf8;
 }
-
-/* BLINKING LIVE STATUS */
 .live{
-    animation:liveBlink 1s infinite;
+    font-size:2.4rem;
+    animation:blink 1s infinite;
 }
-@keyframes liveBlink{
+@keyframes blink{
     0%,50%,100%{opacity:1}
     25%,75%{opacity:.3}
 }
@@ -159,11 +166,6 @@ body{
     color:#22f7ff;
     background:rgba(2,6,23,.85);
     z-index:999;
-    animation:pop .8s ease;
-}
-@keyframes pop{
-    from{transform:scale(.5);opacity:0}
-    to{transform:scale(1);opacity:1}
 }
 </style>
 </head>
@@ -193,7 +195,7 @@ body{
         <div id="progressBar" class="progress-bar"></div>
     </div>
 
-    <div class="controls">
+    <div class="controls" id="controls">
         <button id="startBtn" class="control-btn" onclick="startWithCountdown()">START</button>
     </div>
 
@@ -208,49 +210,76 @@ const TOTAL = 24*3600;
 let time = TOTAL;
 let timer = null;
 
-const hh = document.getElementById("hh");
-const mm = document.getElementById("mm");
-const ss = document.getElementById("ss");
-const bar = document.getElementById("progressBar");
-const statusEl = document.getElementById("status");
-const countdownEl = document.getElementById("countdown");
-const startBtn = document.getElementById("startBtn");
+let warned1h=false, warned30=false, warned10=false;
+
+const hh=document.getElementById("hh");
+const mm=document.getElementById("mm");
+const ss=document.getElementById("ss");
+const bar=document.getElementById("progressBar");
+const statusEl=document.getElementById("status");
+const countdownEl=document.getElementById("countdown");
+const startBtn=document.getElementById("startBtn");
+const controls=document.getElementById("controls");
 
 function update(){
-    hh.textContent = String(Math.floor(time/3600)).padStart(2,"0");
-    mm.textContent = String(Math.floor((time%3600)/60)).padStart(2,"0");
-    ss.textContent = String(time%60).padStart(2,"0");
-    bar.style.width = ((TOTAL-time)/TOTAL*100)+"%";
+    const h=Math.floor(time/3600);
+    const m=Math.floor((time%3600)/60);
+    const s=time%60;
+
+    hh.textContent=String(h).padStart(2,"0");
+    mm.textContent=String(m).padStart(2,"0");
+    ss.textContent=String(s).padStart(2,"0");
+
+    bar.style.width=((TOTAL-time)/TOTAL*100)+"%";
+
+    if(time<=3600){
+        [hh,mm,ss].forEach(e=>e.classList.add("alert"));
+        bar.classList.add("alert");
+
+        if(!warned1h){
+            statusEl.textContent="⏰ LAST 1 HOUR REMAINING!";
+            warned1h=true;
+        }
+        if(time<=1800 && !warned30){
+            statusEl.textContent="⚠️ LAST 30 MINUTES!";
+            warned30=true;
+        }
+        if(time<=600 && !warned10){
+            statusEl.textContent="🔥 LAST 10 MINUTES!";
+            warned10=true;
+        }
+    }
 }
 
 function startWithCountdown(){
-    startBtn.disabled = true;
-    let count = 3;
-    countdownEl.style.display = "flex";
-    countdownEl.textContent = count;
+    let c=3;
+    countdownEl.style.display="flex";
+    countdownEl.textContent=c;
 
-    const cd = setInterval(()=>{
-        count--;
-        if(count === 0){
+    const cd=setInterval(()=>{
+        c--;
+        if(c===0){
             clearInterval(cd);
-            countdownEl.style.display = "none";
+            countdownEl.style.display="none";
             startTimer();
-        } else {
-            countdownEl.textContent = count;
+        }else{
+            countdownEl.textContent=c;
         }
     },1000);
 }
 
 function startTimer(){
-    statusEl.innerHTML = "🚀 HACKATHON IS LIVE";
+    /* HIDE START BUTTON COMPLETELY */
+    controls.style.display="none";
+
+    statusEl.textContent="🚀 HACKATHON IS LIVE";
     statusEl.classList.add("live");
 
-    timer = setInterval(()=>{
-        if(time <= 0){
+    timer=setInterval(()=>{
+        if(time<=0){
             clearInterval(timer);
-            statusEl.textContent = "⏰ TIME'S UP!";
-            statusEl.classList.remove("live");
-            bar.style.width = "100%";
+            statusEl.textContent="⏰ TIME'S UP!";
+            bar.style.width="100%";
             return;
         }
         time--;
